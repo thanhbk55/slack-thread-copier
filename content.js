@@ -404,7 +404,7 @@
     const waitForSettle = async () => {
       let prev = -1;
       for (let i = 0; i < 6; i++) {
-        await sleep(80);
+        await sleep(50);
         const cur = scroller.scrollHeight;
         if (cur === prev) break;
         prev = cur;
@@ -416,11 +416,11 @@
     // ── Phase 1: Scroll to the very top ──────────────────────────────────
     for (let i = 0; i < 15; i++) {
       scroller.scrollTo({ top: 0, behavior: "instant" });
-      await sleep(150);
+      await sleep(80);
       if (scroller.scrollTop < 5) break;
     }
     await waitForSettle();
-    await sleep(250);
+    await sleep(150);
     collect();
 
     // ── Phase 2: Step down ───────────────────────────────────────────────
@@ -437,12 +437,12 @@
 
       scroller.scrollTo({ top: prevScrollTop + step, behavior: "instant" });
 
-      await sleep(450);
+      await sleep(300);
       await waitForSettle();
 
       // Two-pass poll to catch late renders
       let added = collect();
-      await sleep(120);
+      await sleep(80);
       added += collect();
 
       if (onProgress) onProgress(seen.size);
@@ -459,7 +459,7 @@
 
     // ── Phase 3: Final pass at absolute bottom ───────────────────────────
     scroller.scrollTo({ top: scroller.scrollHeight, behavior: "instant" });
-    await sleep(450);
+    await sleep(300);
     await waitForSettle();
     collect();
 
