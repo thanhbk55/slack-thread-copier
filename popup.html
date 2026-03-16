@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Slack Thread Copier Pro</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      width: 300px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #fff;
+      color: #1d1c1d;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #611f69 0%, #4a154b 100%);
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .header-icon {
+      width: 34px;
+      height: 34px;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .header-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #fff;
+      line-height: 1.2;
+    }
+
+    .header-sub {
+      font-size: 10px;
+      color: rgba(255, 255, 255, 0.65);
+      margin-top: 2px;
+    }
+
+    .body {
+      padding: 14px 16px 12px;
+    }
+
+    .section-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #999;
+      margin-bottom: 10px;
+    }
+
+    .toggle-row {
+      display: flex;
+      border: 1.5px solid #e8e8e8;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .toggle-btn {
+      flex: 1;
+      padding: 11px 8px 10px;
+      border: none;
+      background: #f7f7f7;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      transition: background 0.13s, color 0.13s;
+      outline: none;
+    }
+
+    .toggle-btn:focus-visible {
+      box-shadow: inset 0 0 0 2px #611f69;
+    }
+
+    .toggle-btn + .toggle-btn {
+      border-left: 1.5px solid #e8e8e8;
+    }
+
+    .toggle-btn.active {
+      background: #611f69;
+      color: #fff;
+    }
+
+    .toggle-icon {
+      font-size: 17px;
+      line-height: 1;
+    }
+
+    .toggle-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #555;
+    }
+
+    .toggle-desc {
+      font-size: 9px;
+      color: #aaa;
+      margin-top: 1px;
+    }
+
+    .toggle-btn.active .toggle-label {
+      color: #fff;
+    }
+
+    .toggle-btn.active .toggle-desc {
+      color: rgba(255, 255, 255, 0.65);
+    }
+
+    .preview-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #999;
+      margin: 12px 0 6px;
+    }
+
+
+
+    .prefix-section {
+      margin-top: 10px;
+    }
+
+    .prefix-textarea {
+      width: 100%;
+      border: 1.5px solid #e8e8e8;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 11px;
+      font-family: inherit;
+      color: #333;
+      outline: none;
+      resize: vertical;
+      box-sizing: border-box;
+      line-height: 1.5;
+      transition: border-color 0.15s;
+      background: #fafafa;
+    }
+
+    .prefix-textarea:focus {
+      border-color: #611f69;
+      background: #fff;
+    }
+
+    .prefix-textarea::placeholder {
+      color: #c0c0c0;
+    }
+
+    .preview-box {
+      background: #f9f9f9;
+      border: 1px solid #e8e8e8;
+      border-radius: 8px;
+      padding: 9px 11px;
+      font-size: 10.5px;
+      color: #444;
+      line-height: 1.65;
+      font-family: "SF Mono", "Fira Code", "Consolas", monospace;
+      white-space: pre-wrap;
+      min-height: 68px;
+    }
+
+    .footer {
+      padding: 8px 16px 10px;
+      border-top: 1px solid #f0f0f0;
+      font-size: 10px;
+      color: #ccc;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-icon">
+      <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="5.5" y="1.5" width="9" height="11" rx="1.5" stroke="white" stroke-width="1.5"/>
+        <rect x="1.5" y="4.5" width="9" height="11" rx="1.5" fill="white"/>
+      </svg>
+    </div>
+    <div>
+      <div class="header-title">Slack Thread Copier Pro</div>
+      <div class="header-sub">Settings</div>
+    </div>
+  </div>
+
+  <div class="body">
+    <div class="section-label">Copy Format</div>
+    <div class="toggle-row">
+      <button class="toggle-btn" data-value="plain" id="btn-plain">
+        <span class="toggle-icon">Aa</span>
+        <span class="toggle-label">Plain Text</span>
+        <span class="toggle-desc">Clean text</span>
+      </button>
+      <button class="toggle-btn" data-value="markdown" id="btn-md">
+        <span class="toggle-icon">Md</span>
+        <span class="toggle-label">Markdown</span>
+        <span class="toggle-desc">**bold**, ---</span>
+      </button>
+    </div>
+
+    <div class="preview-label">Preview</div>
+    <div class="preview-box" id="preview"></div>
+
+    <div class="section-label" style="margin-top: 14px;">Prefix <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#bbb">(optional)</span></div>
+    <div class="prefix-section">
+      <textarea
+        class="prefix-textarea"
+        id="prefix-input"
+        rows="2"
+        placeholder="e.g. ## Thread from #general&#10;Date: 2024-03-15"
+      ></textarea>
+    </div>
+  </div>
+
+  <div class="footer">Changes apply immediately in Slack</div>
+  <script src="popup.js"></script>
+</body>
+</html>
