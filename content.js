@@ -222,19 +222,158 @@
     return dt;
   }
 
+  // Convert HTML element to Markdown, preserving rich formatting
+  function htmlToMarkdown(element, inlineMode = false) {
+    if (!element) return "";
+    
+    // Text node
+    if (element.nodeType === Node.TEXT_NODE) {
+      return normalizeText(element.textContent);
+    }
+    
+    // Element node
+    const tag = element.tagName?.toLowerCase();
+    let result = "";
+    
+    // Slack-specific: linebreak span
+    if (element.classList?.contains("c-mrkdwn__br")) {
+      return "\n";
+    }
+    
+    // Process children
+    const processChildren = (inline = false) => {
+      return Array.from(element.childNodes)
+        .map(child => htmlToMarkdown(child, inline))
+        .join("");
+    };
+    
+    switch (tag) {
+      // Bold
+      case "strong":
+      case "b":
+        return `**${processChildren(true)}**`;
+      
+      // Italic
+      case "em":
+      case "i":
+        return `*${processChildren(true)}*`;
+      
+      // Strikethrough
+      case "s":
+      case "del":
+        return `~~${processChildren(true)}~~`;
+      
+      // Code inline
+      case "code":
+        // Skip if inside <pre> (handled separately)
+        if (element.closest("pre")) return processChildren(true);
+        return `\`${processChildren(true)}\``;
+      
+      // Links
+      case "a":
+        const href = element.getAttribute("href") || "";
+        const text = processChildren(true) || href;
+        // Slack internal links: just show text
+        if (href.startsWith("/") || href.includes("slack.com")) {
+          return text;
+        }
+        return href ? `[${text}](${href})` : text;
+      
+      // Line breaks
+      case "br":
+        return "\n";
+      
+      // Lists
+      case "ul":
+      case "ol":
+        const isOrdered = tag === "ol";
+        const items = Array.from(element.children)
+          .filter(li => li.tagName?.toLowerCase() === "li")
+          .map((li, idx) => {
+            const content = htmlToMarkdown(li, false).trim();
+            const prefix = isOrdered ? `${idx + 1}. ` : "- ";
+            // Handle nested lists (indent)
+            const lines = content.split("\n");
+            return lines.map((line, i) => 
+              i === 0 ? prefix + line : "  " + line
+            ).join("\n");
+          });
+        return "\n" + items.join("\n") + "\n";
+      
+      case "li":
+        // Handled by parent ul/ol
+        return processChildren(false);
+      
+      // Blockquote
+      case "blockquote":
+        return processChildren(false).split("\n")
+          .map(line => line ? `> ${line}` : ">")
+          .join("\n") + "\n";
+      
+      // Block elements - ensure newlines
+      case "p":
+        const pContent = processChildren(false).trim();
+        return pContent ? pContent + "\n\n" : "";
+      
+      case "div":
+        // Slack often uses divs for line breaks
+        const divContent = processChildren(false).trim();
+        if (!divContent) return "";
+        // If parent is also a block element, just return content + single newline
+        // Otherwise double newline for paragraph separation
+        const parent = element.parentElement?.tagName?.toLowerCase();
+        const isInBlock = ["div", "blockquote", "li"].includes(parent);
+        return divContent + (isInBlock ? "\n" : "\n\n");
+      
+      // Headings
+      case "h1": return `# ${processChildren(true)}\n\n`;
+      case "h2": return `## ${processChildren(true)}\n\n`;
+      case "h3": return `### ${processChildren(true)}\n\n`;
+      case "h4": return `#### ${processChildren(true)}\n\n`;
+      
+      // Span - usually inline, but check for special classes
+      case "span":
+        return processChildren(inlineMode);
+      
+      // Default: just return children
+      default:
+        return processChildren(inlineMode);
+    }
+  }
+
   function getMessageText(container) {
-    const blocks = Array.from(container.querySelectorAll('[data-qa="message-text"]'))
-      .map((el) => normalizeText(el.innerText))
+    const messageBlocks = container.querySelectorAll('[data-qa="message-text"]');
+    
+    // Convert each message block to Markdown
+    const blocks = Array.from(messageBlocks)
+      .map((el) => {
+        // Clone to avoid modifying DOM
+        const clone = el.cloneNode(true);
+        
+        // Remove buttons/interactive elements
+        clone.querySelectorAll("button, .c-button").forEach(btn => btn.remove());
+        
+        const markdown = htmlToMarkdown(clone, false).trim();
+        
+        // Clean up excessive newlines (3+ → 2)
+        return markdown.replace(/\n{3,}/g, "\n\n");
+      })
       .filter(Boolean);
 
+    // Handle code blocks separately (already formatted)
     const codeBlocks = Array.from(container.querySelectorAll("pre"))
       .map((el) => normalizeText(el.innerText))
       .filter(Boolean);
 
     const merged = [...blocks];
     for (const code of codeBlocks) {
-      if (!merged.includes(code)) merged.push("```\n" + code + "\n```");
+      const codeStr = "```\n" + code + "\n```";
+      // Only add if not already captured
+      if (!merged.some(block => block.includes(code))) {
+        merged.push(codeStr);
+      }
     }
+    
     const text = merged.join("\n\n").trim();
 
     // Emoji-only messages: Slack renders custom/unicode emoji as <img>, so
@@ -247,6 +386,7 @@
         .filter(Boolean);
       if (emojis.length) return emojis.join(" ");
     }
+    
     return text;
   }
 
@@ -258,7 +398,15 @@
 
   function messageToPlainText(container) {
     const sender = getSender(container);
-    const text = getMessageText(container).replace(/```\n?/g, "").trim();
+    const text = getMessageText(container)
+      // Remove Markdown syntax for plain text
+      .replace(/\*\*(.+?)\*\*/g, "$1")  // Bold
+      .replace(/\*(.+?)\*/g, "$1")      // Italic
+      .replace(/~~(.+?)~~/g, "$1")      // Strikethrough
+      .replace(/`([^`]+)`/g, "$1")      // Inline code
+      .replace(/\[(.+?)\]\(.+?\)/g, "$1") // Links
+      .replace(/^#+\s+/gm, "")          // Headings
+      .trim();
     return `[${sender}]\n${text || "(no text)"}`;
   }
 
